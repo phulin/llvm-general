@@ -109,6 +109,9 @@ instance Monad m => EncodeM m Word32 CUInt where
 instance Monad m => EncodeM m Word64 CULong where
   encodeM = return . fromIntegral
 
+instance Monad m => DecodeM m Word CUInt where
+  decodeM = return . fromIntegral
+
 instance Monad m => DecodeM m Word32 CUInt where
   decodeM = return . fromIntegral
 

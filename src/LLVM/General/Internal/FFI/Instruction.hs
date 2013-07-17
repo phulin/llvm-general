@@ -79,8 +79,19 @@ foreign import ccall unsafe "LLVMGetIncomingBlock" getIncomingBlock ::
 foreign import ccall unsafe "LLVMAddCase" addCase ::
   Ptr Instruction -> Ptr Constant -> Ptr BasicBlock -> IO ()
 
+foreign import ccall unsafe "LLVM_General_AddSwitchCases" addSwitchCases' ::
+  Ptr Instruction -> CUInt -> Ptr (Ptr Constant) -> Ptr BasicBlock -> IO ()
+
+addSwitchCases i (n, vs) b = addSwitchCases' i n vs b
+
 foreign import ccall unsafe "LLVM_General_GetSwitchCases" getSwitchCases ::
   Ptr Instruction -> Ptr (Ptr Constant) -> Ptr (Ptr BasicBlock) -> IO ()
+
+foreign import ccall unsafe "LLVM_General_CountSwitchCases" countSwitchCases ::
+  Ptr Instruction -> Ptr CUInt -> Ptr CUInt -> IO ()
+
+foreign import ccall unsafe "LLVM_General_GetSwitchCasesEx" getSwitchCasesEx ::
+  Ptr Instruction -> Ptr CUInt -> Ptr (Ptr Constant) -> Ptr (Ptr BasicBlock) -> IO ()
 
 foreign import ccall unsafe "LLVMAddDestination" addDestination ::
   Ptr Instruction -> Ptr BasicBlock -> IO ()

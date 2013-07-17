@@ -344,7 +344,7 @@ tests = testGroup "Module" [
             start = 2 -- won't come back the same w/o start = 2
             ns = [start..count + start - 1]
             vbps = zip [ ConstantOperand (C.Int 32 i) | i <- [0..] ] [ UnName n | n <- (1:ns) ]
-            cbps = zip [ C.Int 32 i | i <- [0..] ] [ UnName n | n <- ns ]
+            cbps = zip [ [PatternRange c c] | i <- [0..], let c = C.Int 32 i ] [ UnName n | n <- ns ]
 
         withContext $ \context -> do
           let ast = Module "<string>" Nothing Nothing [

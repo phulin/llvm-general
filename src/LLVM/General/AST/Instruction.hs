@@ -19,6 +19,11 @@ import LLVM.General.AST.Attribute (ParameterAttribute, FunctionAttribute)
 -- Metadata can be attached to an instruction
 type InstructionMetadata = [(String, MetadataNode)]
 
+data Pattern
+  = PatternSingleton { patternSingletonValue :: Constant }
+  | PatternRange { patternRangeMin :: Constant, patternRangeMax :: Constant }
+  deriving (Eq, Ord, Read, Show)
+
 -- | <http://llvm.org/docs/LangRef.html#terminators>
 data Terminator 
   = Ret { 
@@ -38,7 +43,7 @@ data Terminator
   | Switch {
       operand0' :: Operand,
       defaultDest :: Name,
-      dests :: [(Constant, Name)],
+      dests :: [([Pattern], Name)],
       metadata' :: InstructionMetadata
     }
   | IndirectBr {

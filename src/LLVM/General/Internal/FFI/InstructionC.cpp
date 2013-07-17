@@ -210,6 +210,55 @@ void LLVM_General_GetSwitchCases(
 	}
 }
 
+void LLVM_General_CountSwitchCases(
+	LLVMValueRef v,
+	unsigned &nCases,
+	unsigned &totalNRanges
+) {
+	SwitchInst &s = *unwrap<SwitchInst>(v);
+	nCases = 0;
+	totalNRanges = 0;
+	for(SwitchInst::CaseIt i = s.case_begin(); i != s.case_end(); ++i) {
+		++nCases;
+		totalNRanges += i.getCaseValueEx().getNumItems();
+	}
+}
+
+void LLVM_General_GetSwitchCasesEx(
+	LLVMValueRef v,
+	unsigned *caseSizes,
+	LLVMValueRef *values,
+	LLVMBasicBlockRef *dests
+) {
+	SwitchInst &s = *unwrap<SwitchInst>(v);
+	for(SwitchInst::CaseIt i = s.case_begin(); i != s.case_end(); ++i) {
+		SwitchInst::CaseIt::IntegersSubsetRef r = i.getCaseValueEx();
+		*caseSizes++ = r.getNumItems();
+		for(unsigned j = 0; j != r.getNumItems(); ++j) {
+			IntRange<IntItem> range = r.getItem(j);
+			*values++ = wrap(range.getLow().toConstantInt());
+			*values++ = wrap(range.getHigh().toConstantInt());
+		}
+		*dests++ = wrap(i.getCaseSuccessor());
+	}
+}
+
+void LLVM_General_AddSwitchCases(
+	LLVMValueRef v,
+	unsigned nValues,
+	LLVMValueRef *values,
+	LLVMBasicBlockRef dest
+) {
+	std::vector<IntRange<IntItem> > ranges;
+	for(; nValues != 0; nValues -= 2) {
+		const ConstantInt *low = unwrap<ConstantInt>(*values++);
+		const ConstantInt *high = unwrap<ConstantInt>(*values++);
+		ranges.push_back(IntRange<IntItem>(IntItem::fromConstantInt(low), IntItem::fromConstantInt(high)));
+	}
+	IntegersSubset iss(ranges);
+	unwrap<SwitchInst>(v)->addCase(iss, unwrap(dest));
+}
+
 void LLVM_General_GetIndirectBrDests(
 	LLVMValueRef v,
 	LLVMBasicBlockRef *dests

@@ -11,6 +11,7 @@ import qualified Language.Haskell.TH.Quote as TH
 import qualified LLVM.General.Internal.InstructionDefs as ID
 import LLVM.General.Internal.InstructionDefs (instrP)
 
+import Data.Word
 import Data.Functor
 import Control.Monad
 import Control.Monad.Trans
@@ -95,12 +96,28 @@ instance DecodeM DecodeAST A.Terminator (Ptr FFI.Instruction) where
       [instrP|Switch|] -> do
         op0 <- op 0
         dd <- successor 1
-        let nCases = (nOps - 2) `div` 2
-        values <- allocaArray nCases
-        dests <- allocaArray nCases
-        liftIO $ FFI.getSwitchCases i values dests
-        cases <- return zip `ap` peekArray nCases values `ap` peekArray nCases dests
-        dests <- forM cases $ \(c, d) -> return (,) `ap` decodeM c `ap` decodeM d
+        let nCases' = (nOps - 2) `div` 2
+        nCasesP <- alloca
+        totalNRangesP <- alloca
+        liftIO $ FFI.countSwitchCases i nCasesP totalNRangesP
+        nCases <- peek nCasesP
+        totalNRanges <- peek totalNRangesP
+        caseSizesA <- allocaArray nCases
+        valuesA <- allocaArray (2*totalNRanges)
+        destsA <- allocaArray nCases
+        liftIO $ FFI.getSwitchCasesEx i caseSizesA valuesA destsA
+        caseSizes <- decodeM (nCases, caseSizesA)
+        values <- peekArray (2*totalNRanges) valuesA
+        let decodeRanges [] [] = return []
+            decodeRanges (caseSize:caseSizes') values = do
+              let (caseValues, values') = splitAt (2*((fromIntegral :: Word -> Int) caseSize)) values
+                  patterns [] = return []
+                  patterns (min:max:moreValues) = 
+                    return (:) 
+                      `ap` (return A.PatternRange `ap` decodeM min `ap` decodeM max)
+                      `ap` patterns moreValues
+              return (:) `ap` patterns caseValues `ap` decodeRanges caseSizes' values'
+        dests <- return zip `ap` decodeRanges caseSizes values `ap` decodeM (nCases, destsA)
         return A.Switch {
           A.operand0' = op0,
           A.defaultDest = dd,
@@ -172,10 +189,10 @@ instance EncodeM EncodeAST A.Terminator (Ptr FFI.Instruction) where
         op0' <- encodeM op0
         dd' <- encodeM dd
         i <- liftIO $ FFI.buildSwitch builder op0' dd' (fromIntegral $ length ds)
-        forM ds $ \(v,d) -> do
-          v' <- encodeM v
+        forM ds $ \(vs,d) -> do
+          vs' <- encodeM (concatMap (\(A.PatternRange min max) -> [min,max]) vs)
           d' <- encodeM d
-          liftIO $ FFI.addCase i v' d'
+          liftIO $ FFI.addSwitchCases i vs' d'
         return $ FFI.upCast i
       A.IndirectBr { 
         A.operand0' = op0,

@@ -654,9 +654,9 @@ tests = testGroup "Instructions" [
               operand0' = ConstantOperand (C.Int 16 2),
               defaultDest = Name "foo",
               dests = [
-               (C.Int 16 0, UnName 0),
-               (C.Int 16 2, Name "foo"),
-               (C.Int 16 3, UnName 0)
+               ([PatternRange (C.Int 16 0) (C.Int 16 1)], UnName 0),
+               ([PatternRange (C.Int 16 2) (C.Int 16 2)], Name "foo"),
+               ([PatternRange (C.Int 16 3) (C.Int 16 3)], UnName 0)
               ],
               metadata' = []
            }
